@@ -58,14 +58,23 @@ class G09Calculator(Gaussian):
         l = self.base / label
         super().set_label(l.resolve().as_posix())
 
-    def process(self, label, root=1, nstates=5, **kwargs):
+    def process(self, label, root=1, nstates=5, clean=False,
+                **kwargs):
         """Generalized process for optimization, 
            ground state, frequency and TD
         """
+        root = int(root)
+        nstates = int(nstates)
         if label not in proc_params.keys():
             raise KeyError("Process parameter not correct!")
 
         self._set_label(label)  # Causing writing label.com file
+        # Clean up then return
+        if clean:
+            parprint("Clean up previous calculations for {0}".format(label))
+            self.clean()
+            return True
+        
         params = proc_params[label]
         # in_atoms used to generate input
         try:
@@ -74,8 +83,8 @@ class G09Calculator(Gaussian):
         except Exception:
             raise
 
-        out_files = [self.base / "{0}.chk".format(label),
-                     self.base / "{0}.log".format(label)]
+        out_files = ["{0}.chk".format(self.label),
+                     "{0}.log".format(self.label)]
         if "output" in params.keys():
             out_struct = self.base / params["output"].format(root=root,
                                                              nstates=nstates)
@@ -83,7 +92,7 @@ class G09Calculator(Gaussian):
         else:
             out_struct = None
         # Calculation finished
-        if all([o_.exists() for o_ in out_files]):
+        if all([Path(o_).exists() for o_ in out_files]):
             parprint("Calculation process {0} is finished".format(label))
             #TODO: add post processing functions
             return True
@@ -111,7 +120,7 @@ class G09Calculator(Gaussian):
         ec = utils.run_job(self.label)
         if ec != 0:             # Some error
             parprint("Process {0} failed, please check".format(label))
-        out_atoms = read_gaussian_out(self.base / "{0}.log".format(label),
+        out_atoms = read_gaussian_out("{0}.log".format(self.label),
                                       quantity="structures")[-1]
         if out_struct is not None:
             write(out_struct, out_atoms)
