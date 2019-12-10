@@ -4,6 +4,28 @@ import re
 from ase.units import Hartree
 import numpy as np
 from pathlib import Path
+from ase.parallel import parprint, paropen, rank, size, world
+from shutil import copyfile
+
+def copy_chk(base, prev, now):
+    """Copy chk file from previous state"""
+    if rank == 0:
+        copyfile(base / "{0}.chk".format(prev),
+                 base / "{0}.chk".format(now))
+    else:
+        pass
+    world.barrier()
+    
+
+def run_job(label):
+    cmd = "g09 < {0}.com > {0}.log".format(label)
+    parprint(cmd)
+    exit_state = os.system(cmd)
+    if exit_state == 0:
+        print("Calculation exited normally")
+    else:
+        print("Abnormal job with exit code {0}".format(exit_state))
+    return exit_state
 
 
 def get_nproc():
